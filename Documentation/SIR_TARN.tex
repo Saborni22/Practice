@@ -1,0 +1,250 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{undertilde}
+\usepackage{amssymb}
+\usepackage{verbatim}
+\usepackage{dsfont}
+\usepackage{float}
+
+\begin{document}
+
+\title{SIR for TARN}
+\maketitle
+
+\section{SIR}
+
+\subsection{Basic}
+
+Want to use Sequential Importance Resampling for TARN. 
+
+\begin{itemize}
+
+\item Choose $ \gamma_{n}(s_{1:n}) = | \sum_{i=1}^{\tau_{n}} f(s_{i}) |p(s_{1:n}) $ and $Z_{n} = \int \gamma_{n}(s_{1:n}) p(s_{1:n}) \text{d} s_{1:n} = \int | \sum_{i=1}^{\tau_{n}} f(s_{i}) | p(s_{1:n}) \text{d} s_{1:n} $.
+
+\item $\tau_{n}$ because stopping time depends on the number of months. 
+
+\item Choose proposal density $q_{n}(s_{1:n}) = p_{n}(s_{1:n})$ (process density).
+
+\item Want to estimate $Z_{m}$.
+
+\item Incremental weights: 
+$$ \alpha_{n}(s_{1:n}) = \frac{ \gamma_{n}(s_{1:n}) }{ \gamma_{n-1}(s_{1:n-1}) q_{n}(s_{n}|s_{1:n-1}) } = \frac{ \left | \sum_{i=1}^{\tau_{n}} f(s_{i}) \right | }{ \left | \sum_{i=1}^{\tau_{n-1}} f(s_{i}) \right | } $$ 
+
+\item At time $n$: 
+\begin{itemize} 
+\item For $k$-th path, propagate it forward if still alive after time $n-1$. If it is dead, do nothing. 
+
+\item Incremental weight will be
+
+\[ \alpha_{n} \left ( s_{1:n}^{(k)} \right ) = \left\{ 
+  \begin{array}{l l}
+    \frac{ \left | \sum_{i=1}^{n} f \left ( s_{i}^{(k)} \right ) \right | }{ \left | \sum_{i=1}^{n-1} f \left ( s_{i}^{(k)} \right ) \right | } & \quad \text{if $k$-th path is alive after time $n-1$}\\
+   1 & \quad \text{if $k$-th path is dead after time $n-1$}
+  \end{array} \right.\]
+
+\item Resample.
+
+\item After resampling, find out whether the $k$-th resampled path is alive after time $n$:
+\begin{itemize}
+\item If it was replaced by a path that was already dead, then it remains dead.
+\item If it was replaced by a path that was previously alive, then it might or might not die now.
+\end{itemize} 
+
+\end{itemize}
+
+\end{itemize}
+This should ultimately lead to an unbiased estimator of $\mathbb{E} \left | \sum_{i=1}^{\tau_{m}} f(S_{i}) \right |$. 
+\\ \\
+If $f >0$, then the resampling step would lead to paths that are still alive being given higher weights. Of course, in that case we would not need to take an absolute value. 
+
+\begin{itemize}
+
+\item For example, choose $f(x) = e^{-x}$. Then $f > 0$.
+\item Longer paths given higher weights.
+\item Do not notice SIR doing any better, but need to do more experiments.
+\item SIR and MC taking similar running time.
+
+\end{itemize}
+
+\section{Slightly Modified}
+
+Let us next try SIR as in SMC samplers, with $0 \leq \kappa_{1} \leq \kappa_{2} \leq \cdots \leq \kappa_{m} = 1$:
+
+\begin{itemize}
+
+\item Choose $ \gamma_{n}(s_{1:n}) = | \sum_{i=1}^{\tau_{n}} f(s_{i}) |^{\kappa_{n}} p(s_{1:n})$.
+
+\item Incremental weights: 
+$$ \alpha_{n}(s_{1:n}) = \frac{ \left | \sum_{i=1}^{\tau_{n}} f(s_{i}) \right |^{\kappa_{n}} }{ \left | \sum_{i=1}^{\tau_{n-1}} f(s_{i}) \right |^{\kappa_{n-1}} }. $$ 
+
+\item At time $n$: 
+\begin{itemize} 
+\item For $k$-th path, propagate it forward if still alive after time $n-1$. If it is dead, do nothing. 
+
+\item Incremental weight will be
+
+\[ \alpha_{n} \left ( s_{1:n}^{(k)} \right ) = \left\{ 
+  \begin{array}{l l}
+    \frac{ \left | \sum_{i=1}^{n} f \left ( s_{i}^{(k)} \right ) \right |^{\kappa_{n}} }{ \left | \sum_{i=1}^{n-1} f \left ( s_{i}^{(k)} \right ) \right |^{\kappa_{n-1}} } & \quad \text{if $k$-th path is alive after time $n-1$}\\
+   1 & \quad \text{if $k$-th path is dead after time $n-1$}
+  \end{array} \right.\]
+
+\end{itemize}
+
+\item Easy to implement.
+
+\item But even this is not doing any better. 
+
+\item Tried to select the $\kappa$'s randomly, yet to no avail.
+
+\end{itemize}
+\underline{\textsc{Thoughts:}}
+
+\begin{itemize}
+
+\item We have control over the sequence of $\kappa$'s. 
+\item This is been referred to as `temperature' in literature somewhere.
+\item For the barrier option case, we were estimating a bunch of conditional survival probabilites efficiently using SMC instead of using MC to estimate the overall survival probability. This is like importance splitting.
+ 
+\end{itemize} 
+\vspace{0.2in}
+\underline{What else can we do?} 
+
+\begin{itemize}
+
+\item We could try SMC samplers. This is much more computationally intensive, and there is another pdf file for this.
+\item We could just try to do MCMC. This will have its own issues.
+\item We could try to do some of the more advanced SMC methods, for example from \cite{tutorial_15_years_later}. But none of these seem to focus on the normalizing constant.
+\item We can in general change the sequence of target densities pretty much as we like:
+$$ \gamma_{n}(s_{:n}) = g_{n}(s_{1:n}) $$
+for any sequence of positive functions $\{ g_{n} \}_{1 \leq n \leq m} $ with 
+$$ g_{m}(s_{1:m}) = \left | \sum_{i=1}^{\tau_{m}} f(s_{i}) \right | p(s_{1:n}). $$ 
+Getting a sequence of $g_{n}$'s that estimates the normalizing constant well is the challenge. 
+
+\end{itemize}
+ Let us focus on the last idea at the moment. In-fact, let us focus on tempering. 
+\\ Could do this within the SMC samplers as well. 
+
+\section{A Particular Problem}
+
+Trivial case. No longer working on a log-scale. 
+
+\begin{enumerate}
+
+\item $S_{0} = 100$, $\sigma = 8 \%$,  $\Gamma_{G} = 200$, $\Gamma_{L} = 100$,  $m = 24$, $k = 30$.
+
+\[f(s) = \left\{ 
+  \begin{array}{l l}
+    2(s-110) + 20 & \quad \text{ if } s > 110 \\
+   2(80-s) + 20 & \quad \text{ if } s < 90 \\
+   -20 & \quad \text{ if } 90 \leq s \leq 110
+  \end{array} \right.\]
+
+\item Constant sequence of $\kappa$'s:
+\begin{itemize}
+\item Doing same as MC.
+\end{itemize}
+
+\item Linearly increasing sequence of $\kappa$'s:
+\begin{itemize}
+\item Interestingly, MC does marginally better.
+\item The ESS is always very high. This means that the SIR algorithm is never resampling and that is why it is doing same as naive MC.
+\end{itemize}
+
+\item Exponentially increasing sequence of $\kappa$'s:
+\begin{itemize}
+\item Not doing any better, in-fact doing slightly worse. 
+\item Perhaps because the $\kappa$'s increase too slowly initially.
+\item Never resamples.
+\end{itemize}
+
+\item Under these dynamics, the estimated price is 476 and the estimated standard error is about 1.5\% for MC. This is probably not very good.
+
+\item This means that a 95\% (say) confidence interval for the price is about (460,490), which is not a desirable thing. 
+
+\end{enumerate} 
+
+\underline{\textsc{Thoughts:}}
+
+\begin{itemize}
+
+\item There seems to be a trade-off between SMC and naive MC. For SMC, we do not want to resample much as we fear that this depletes the particle system. On the other hand, if we do not really resample much then it is similar to doing naive MC. So where exactly is the benefit of doing SMC? 
+
+\end{itemize}
+
+\subsection{Tempering} 
+
+We observe that $f(s)$ is discontinuous at $s = 90$ and at $s = 110$. In fact, there is quite a big jump at these points. Our idea is to have a sequence of continuous functions approximating $f$ and use these in the tempering strategy: 
+
+\begin{itemize}
+
+\item Choose $ \{ f_{n} \}_{n=1}^{m} $ continuous such that $f_{m} \equiv f$ and $f_{n}$ approaches $f$ as $n \rightarrow m$.
+
+\item Set target density to be 
+$$ \gamma_{n}(s_{1:n}) = \left | \sum_{i=1}^{\tau_{n}} f_{n} (s_{i}) \right | p(s_{1:n}) $$
+
+\item In this context, we can choose $\tau_{n}$ to be the stopping time either depending on $f_{n}$ or simply on $f$. If it is simply on $f$, then it is much easier to implement and that is what we try first. 
+
+\end{itemize}
+
+\subsubsection{Stopping time depending on $f$ only}
+
+\begin{itemize}
+\item Incremental weights are
+$$ \alpha_{n} \left (s_{1:n}^{(l)} \right ) = \frac{ \left | \sum_{i=1}^{\tau_{n,f}^{(l)}} f_{n} \left (s_{i}^{(l)} \right ) \right | } { \left | \sum_{i=1}^{\tau_{n-1,f}^{(l)}} f_{n-1} \left ( s_{i}^{(l)} \right) \right | }, \hspace{0.1in} n = 1, 2, \ldots, m $$
+\item This is more complicated than SIR with a temperature scheme to implement. Can it be done more efficiently?
+\end{itemize}
+Choosing approximating functions: 
+
+\begin{enumerate}
+
+\item We choose a sequence of positive numbers $\delta = \delta_{1} > \delta_{2} > \cdots > \delta_{m-1} > 0$ and set
+
+\[f_{n}(s) = \left\{ 
+\begin{array}{l l}
+2(80-s) + 20                                     & \quad \text{ if } s < 90 \\
+- \frac{20}{\delta_{n}} (s-90)           & \quad \text{ if } 90 \leq s < 90 + \delta_{n} \\
+-20                                                   & \quad \text{ if } 90 + \delta_{n} \leq s < 110 - 2\delta_{n} \\
+\frac{20}{\delta_{n}}(s - 110) + 20  & \quad \text{ if } 110 - 2 \delta_{n} \leq s < 110 \\
+2(s-110) + 20                                   & \quad \text{ if } s > 110 \\
+\\
+  \end{array} \right.\]
+This does about the same as MC.
+
+\item Choose some other sequences of approximating functions. In both cases we are doing worse than MC. 
+
+\end{enumerate} 
+
+\subsubsection{Stopping times depending on each $f_{n}$}
+
+\begin{itemize}
+
+\item Incremental weights are
+$$ \alpha_{n} \left (s_{1:n}^{(l)} \right ) = \frac{ \left | \sum_{i=1}^{\tau_{n,f_{n}}^{(l)}} f_{n} \left (s_{i}^{(l)} \right ) \right | } { \left | \sum_{i=1}^{\tau_{n-1,f_{n-1}}^{(l)}} f_{n-1} \left ( s_{i}^{(l)} \right) \right | }, \hspace{0.1in} n = 1, 2, \ldots, m $$
+\end{itemize}
+
+Even this does the same as naive MC.
+
+
+\begin{thebibliography}{45}
+
+\bibitem{tutorial_15_years_later}
+Doucet, A. and Johansen, A.M.,
+  \emph{A Tutorial on Particle Filtering and Smothing: Fifteen Years Later},
+  Oxford Handbook of Nonlinear Filtering (2011)
+
+\end{thebibliography}
+
+\end{document}
+
+
+
+
+
+
+
+
+

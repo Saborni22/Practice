@@ -1,0 +1,225 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{undertilde}
+\usepackage{amssymb}
+\usepackage{verbatim}
+\usepackage{dsfont}
+\usepackage{float}
+
+\begin{document}
+
+\title{SMC Sampler for TARN}
+\maketitle
+
+\section{SMC Samplers}
+
+Want to use SMC samplers for TARN. 
+
+\begin{itemize}
+
+\item First we use SIR to sample from the sequence of densities 
+$$ \pi_{n}(s_{1:n}) \propto \left | \sum_{i=1}^{\tau_{n}} f(s_{i}) \right |^{\kappa_{n}} p(s_{1:n}), \text{ } n = 1, 2, \ldots, m, $$
+where $ 0 \leq \kappa_{1} \leq \kappa_{2} \leq \cdots \leq \kappa_{m} $.
+
+\item This is sampling from a sequence of spaces of increasing dimensions (dimension is $n$, which is increasing from 1 to $m$).
+
+\item Implementing SIR in this case is slightly different from the last time (when we simply used SIR to estimate the price), as in this case we have to keep track of the stopping times of the paths as well. 
+
+\item Implement SIR to give the following output:
+$$ S =
+ \begin{pmatrix}
+  s_{1}^{(1)} & s_{2}^{(1)} & \cdots & \cdots & s_{\tau_{m}^{(1)}}^{(1)} & \cdots & \cdots & s_{m}^{(1)} \\
+  s_{1}^{(2)} & s_{2}^{(2)} & \cdots & s_{\tau_{m}^{(2)}}^{(2)} & \cdots & \cdots & \cdots & s_{m}^{(2)} \\
+  \vdots  & \vdots  & \ddots & \vdots & \vdots  & \vdots  & \ddots & \vdots \\
+ s_{1}^{(M)} & s_{2}^{(M)} & \cdots & \cdots & \cdots & s_{\tau_{m}^{(M)}}^{(M)} & \cdots & s_{m}^{(M)} 
+ \end{pmatrix}_{M \times m}
+$$ 
+The $k$-th path looks like $ s_{1}^{(k)} \rightarrow s_{2}^{(k)} \rightarrow \ldots \rightarrow s_{\tau_{m}^{(k)}}^{(k)} \rightarrow \ldots \rightarrow s_{m}^{(k)}. $ The notation looks hideous. 
+
+\item $\tau_{m}^{(k)}$ denotes the stoppng time for the $k$-th path when there are $m$-time periods in total. 
+
+\item The whole paths (even after the option has `died') needs to be stored as the SMC sampler requires this.
+
+\end{itemize}
+
+\subsection{Basic SMC Sampler}
+
+\begin{itemize}
+
+\item Given the samples from $\pi_{n}(s_{1:n})$, we are going to use SMC samplers to sample from the sequence of densities 
+$$ \tilde{\pi}_{n}(s_{1:m}) \propto \left | \sum_{i=1}^{\tau_{m}} f(s_{i}) \right |^{\tilde{\kappa}_{n}} p(s_{1:m}), \text{ } n = 1, 2, \ldots, p, $$
+where $ \kappa_{m} = \tilde{\kappa}_{1} \leq \tilde{\kappa}_{2} \leq \cdots \leq \tilde{\kappa}_{m} = 1$.
+
+\item This is sampling from a sequence of spaces of the same dimension (dimension is $m$, which stays fixed).
+
+\item We let $x_{n}^{(l)} = s_{1:m,n}^{(l)}$ denote the $l$-th particle at time $n$, $n = 1, 2, \ldots, m$ and $l = 1, 2, \ldots, M$. 
+
+\item We propagate $x_{n-1}^{(l)} \rightarrow x_{n}^{(l)}$ using a forward Markov kernel $K_{n} \left ( x_{n-1}^{(l)},x_{n} \right )$ that is $\tilde{\pi}_{n}(x_{n})$ invariant. Use a Metropolis-Hastings proposal step.
+\begin{itemize} 
+\item Given a path $\mathbf{s} = (s_{1}, s_{2}, \ldots, s_{\tau_{m}}, \ldots, s_{m} )$, propose a new path $\mathbf{S} = (S_{1}, S_{2}, \ldots, S_{T_{m}}, \ldots, S_{m})$ as $\mathbf{s} + \mathcal{N}_{m}(0,\sigma_{\star}^{2} I_{m})$ for some $\sigma_{\star}$ where $I_{m}$ is the identity matrix.
+\item $T_{m}$ is the stoppig time for the proposed path.
+\item Accept $\mathbf{S}$ with probabilty 
+$$ 1 \wedge \frac{|\sum_{i=1}^{T_{m}}f(S_{i})|^{\tilde{\kappa}_{n}} p(S_{1:m})}{ |\sum_{i=1}^{\tau_{m}}f(s_{i})|^{\tilde{\kappa}_{n}} p(s_{1:m}) } $$
+\item Have to do this for every path, at every time step $n$ ($n = 1, 2, \ldots, p$).
+\end{itemize} 
+
+\item The backward kernel is chosen as in \cite{SMC_option_jasra}.
+
+\item The incremental weights are then 
+\begin{eqnarray}  
+\alpha_{n}^{(l)} \left ( x_{n-1}^{(l)} \right ) & = & \frac{ \tilde{\pi}_{n} \left ( x_{n-1}^{(l)} \right ) }{ \tilde{\pi}_{n-1}\left ( x_{n-1}^{(l)} \right ) } \nonumber \\
+& = & \frac{ \left | \sum_{i=1}^{\tau_{m,n-1}^{(l)}} f \left ( s_{i,n-1}^{(l)} \right ) \right |^{\tilde{\kappa}_{n}} } { \left | \sum_{i=1}^{\tau_{m,n-1}^{(l)}} f \left ( s_{i,n-1}^{(l)} \right ) \right |^{\tilde{\kappa}_{n-1}} } \nonumber \\
+& = & \left | \sum_{i=1}^{\tau_{m,n-1}^{(l)}} f \left ( s_{i,n-1}^{(l)} \right ) \right |^{\tilde{\kappa}_{n} - \tilde{\kappa}_{n-1}} 
+, \text{ } n = 1, 2, \ldots, p, \text{ and } l = 1, 2, \ldots, M \nonumber 
+\end{eqnarray}
+
+\end{itemize}
+\vspace{0.2in}
+Implemented a basic version of the SMC sampler. 
+
+\begin{itemize}
+
+\item Code is slow, need to speed up certain parts. Not immediately sure how to do it though. 
+\item Using a one-step random walk Metropolis-Hastings step for propagation in the SMC part.
+\item SMC sampler does not seem to do better.
+
+\end{itemize}
+
+\subsection{Some Immediate Issues}
+
+\begin{itemize}
+
+\item \textit{Speed}: can this be implemented more efficiently? I suspect it can be.
+\item \textit{Kernel}: how to choose the kernel $K_{n}$? This is an important issue.
+\item $\kappa$: as in SIR, how to choose the sequence of $\kappa$'s and $\tilde{\kappa}$'s?
+
+\end{itemize}
+
+\subsection{What else can we do?} 
+
+\begin{itemize}
+
+\item As in SIR, can choose pretty much any sequence of target densities $ \{ \pi_{n}(s_{1:n}) \}_{1 \leq n \leq m}$ and $ \{ \tilde{\pi}_{n}(s_{1:m}) \}_{1 \leq n \leq p} $ (just make sure that they are integrable).
+
+\item Just make sure that $ \pi_{m}(s_{1:m})$ and $\tilde{\pi}_{1}(s_{1:m})$ match and that 
+$$ \tilde{\pi}_{p}(s_{1:m}) = \left | \sum_{i=1}^{\tau_{m}} f(s_{i}) \right | p(s_{1:m}). $$
+
+\item But how to do this really? (Of course, the issue of choosing the kernel $K_{n}$ will still remain.)
+
+\item Well, what we are trying to do is that construct artificially a sequence of target probability densities so that the normalizing constant is estimated with the least variance. Is there any literature on this? 
+
+\item Is it worthwhile to look at the asymptotic variance of $Z_{n}$ and try to minimize it?  
+ 
+\end{itemize}
+
+\section{A Particular Problem}
+
+\begin{itemize}
+
+\item $S_{0} = 100$, $\sigma = 8 \%$ (not sure if this means $\sigma = 8$ or $\sigma = 0.08$ in our implementation).
+
+\item $m = 24$, $k = 30$.
+
+\item \[f(s) = \left\{ 
+  \begin{array}{l l}
+    2(s-110) + 20 & \quad \text{ if } s > 110 \\
+   2(80-s) + 20 & \quad \text{ if } s < 90 \\
+   -20 & \quad \text{ if } 90 \leq s \leq 110
+  \end{array} \right.\]
+
+\item $\Gamma_{G} = 200$, $\Gamma_{L} = 100$.
+
+\end{itemize}
+\vspace{0.2in}
+\underline{Some diagnostics:}
+\begin{itemize}
+\item We plot the ESS of SIR and SMC. 
+\begin{itemize}
+\item ESS for SIR is always very high (more than threshold of $M/2$). This means that the SIR never resamples and thus does exactly the same as naive MC.
+\item SMC only resamples once.
+\end{itemize}
+\item We look at the average acceptance rate of the MH step.
+\begin{itemize}
+\item High average acceptance rate, more than 85\%.
+\end{itemize}
+\item Can use the adaptive algorithm of \cite{adaptive_SMC_ABC}.
+\begin{itemize}
+\item But then this tries to make the ESS high. We anyway have the ESS high.
+\end{itemize}
+\end{itemize}
+
+Discovered a bug in the MH step of the SMC sampler. Was not calculating the stopping time correctly. Fixed this bug. No noticable change.
+
+\subsection{Tempering}
+
+We want to construct a sequence of continuous functions 
+$$\{ g_{0} \}_{1 \leq n \leq p}: \mathbb{R}^{m} \rightarrow \mathbb{R}$$ 
+such that 
+$$ g_{p} \equiv g := \sum_{i=1}^{\tau_{m}} f(s_{i}) $$ 
+and then set the sequence of target distributions to be 
+$$ \tilde{\pi}_{n}(s_{1:m}) = | g_{n}(s_{1:m}) | p(s_{1:m}) $$
+The idea is that if the functions $g_{n}$ approach $g$ gradually, then moving through 
+$$g_{0} \rightarrow g_{1} \rightarrow \cdots g_{p-1} \rightarrow g_{p} = f $$ 
+would be a sensible thing to try when trying to sample from $\tilde{\pi}_{p}$. 
+\\ \\
+The $g_{n}$'s are functions in $\mathbb{R}^{m}$, and so it is hard to select them. An easier thing to do is the following: 
+
+\begin{itemize}
+
+\item Since we have fixed $m$, let us drop the $m$ from $\tau_{m}$.
+\item Choose a sequence of functions 
+$$ \{ f_{n} \}_{0 \leq n \leq p }: \mathbb{R} \rightarrow \mathbb{R} $$
+with $ f_{0} \equiv 1$ and $f_{p} \equiv f$.
+\item Then set the the sequence of target distributions to be 
+$$ \tilde{\pi}_{n}(s_{1:m}) = \left | \sum_{i=1}^{\tau_{f_{n}}} f_{n} (s_{i}) \right | p(s_{1:m}) $$
+In this case, the stopping time is with respect to the function $f_{n}$.
+\item We note that this is going to be computationally quite expensive.
+\end{itemize}
+How to choose the $f_{n}$'s? 
+\subsubsection{First attempt} 
+
+\begin{itemize}
+\item Choose a sequence of positive numbers $\delta = \delta_{1} > \delta_{2} > \cdots > \delta_{p-1} > 0$ and set
+\[f_{n}(s) = \left\{ 
+\begin{array}{l l}
+2(80-s) + 20                                     & \quad \text{ if } s < 90 \\
+- \frac{20}{\delta_{n}} (s-90)           & \quad \text{ if } 90 \leq s < 90 + \delta_{n} \\
+-20                                                   & \quad \text{ if } 90 + \delta_{n} \leq s < 110 - 2\delta_{n} \\
+\frac{20}{\delta_{n}}(s - 110) + 20  & \quad \text{ if } 110 - 2 \delta_{n} \leq s < 110 \\
+2(s-110) + 20                                   & \quad \text{ if } s > 110 \\
+\\
+  \end{array} \right.\]
+
+\item Managed to implement this.
+\item Very very slow, calculating the stoping time for every path with respect to every $f_{n}$ at every iteration takes a lot of time. Not sure if possible to implement faster.
+\item Still using random walk MH step as the kernel $K_{n}$.
+\end{itemize}
+
+\subsubsection{Second Attempt}
+
+\begin{itemize}
+
+\item Choose $f_{n}(s) = \delta_{n} |s-110|^{1.01} - 20$, $1 \leq n \leq p-1$.
+
+\end{itemize}
+This seems to point towards using a sequence of parametric functions $f_{n} = f_{\delta_{n}}$, where $\delta_{n}$ is the parameter.
+
+
+\begin{thebibliography}{76}
+
+\bibitem{SMC_option_jasra}
+  Jasra, A. and Del Moral, P.,
+  \emph{Sequential Monte Carlo for Option Pricing},
+  Stochastic Analysis and Applications, (2011)
+
+\bibitem{adaptive_SMC_ABC}
+  Del Moral, P., Doucet, A. and Jasra, A., 
+  \emph{An Adaptive Sequential Monte Carlo Method for Approximate Bayesian Computation},
+  Stat Computing, (2011)
+
+\end{thebibliography}
+
+\end{document} 

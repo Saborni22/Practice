@@ -1,0 +1,103 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{undertilde}
+\usepackage{amssymb}
+\usepackage{verbatim}
+\usepackage{dsfont}
+\usepackage{float}
+
+\begin{document}
+
+\title{Thoughts About TARN}
+\maketitle
+
+\section{Thoughts}
+
+\begin{itemize}
+
+\item As Alex observed, about $94\%$ of paths stay inside $(90,110)$ and lead to a payoff of $-100$. Only about $6\%$ of paths exit these barriers.
+
+\item However, what happens is that when a path exits the barrier, there is a big discontinuity in the payoff because of the discontinuity of $f$. 
+
+\item So what happens is that the paths that leave the barriers have a payoff that is much different from $-100$.
+
+\item Can we `push' some particles towards leaving the barriers? Tried this today (01/04/15) with some weighting fuunctions and managed to do somewhat.
+
+\item But it is not clear how this will help us. 
+
+\item The payoffs (of the $M$ paths) are not continuous and this is inherent to the problem.
+
+\item But so what?
+
+\item The estimated payoff is the mean of a (large) bunch of negative values and a (small) bunch of positive values. Can we basically use importance sampling to estimate these negative values and positive values acccurately? 
+
+\item It is not immediately obvious how to do it. 
+
+\end{itemize} 
+Further thoughts:
+
+\begin{enumerate}
+
+\item \begin{eqnarray}
+\mathbb{E} \left [ \sum_{i=1}^{\tau_{m}} f(S_{i}) \right ] & = & \mathbb{E} \left [ \sum_{i=1}^{\tau_{m}} f(S_{i}) \middle | \text{exits by time 5} \right ] \mathbb{P} (\text{exits by time 5})  \nonumber \\
+& & + \mathbb{E} \left [ \sum_{i=1}^{\tau_{m}} f(S_{i}) \middle | \text{doesn't exit by time 5} \right ] \mathbb{P} (\text{doesn't exit by time 5}) \nonumber \\
+& = & \mathbb{E} \left [ \sum_{i=1}^{\tau_{m}} f(S_{i}) \middle | \text{exits by time 5} \right ] \mathbb{P} (\text{exits by time 5}) \nonumber \\
+& & -100 \times \mathbb{P} (\text{doesn't exit by time 5}) \nonumber
+\end{eqnarray}
+
+\item Is the problem with naive MC that it is not approximating $\mathbb{P} (\text{exits by time 5})$ well? 
+
+\item $\mathbb{P} ( \text{does not exit by time 5}) $ could potentially be calculated by SMC.
+
+\item Estimating $\left [ \sum_{i=1}^{\tau_{m}} f(S_{i}) \middle | \text{doesn't exit by time 5} \right ]$ is the challenge. Don't know how to do it.
+
+\end{enumerate}
+
+\section{Transforming The Problem To A More Familiar Setting}
+
+\begin{itemize}
+
+\item We observe that
+\[f(s) = \left\{ 
+  \begin{array}{l l}
+    2(s-110) + 20 & \quad \text{ if } s > 110 \\
+   2(80-s) + 20 & \quad \text{ if } s < 90 \\
+   -20 & \quad \text{ if } 90 \leq s \leq 110
+  \end{array} \right.\]
+
+\item Define $ g_{m}(s_{1:m}) = 100 + \sum_{i=1}^{\tau} f ( s_{1:m} ) $ to be the new payoff function. Then $g(s_{1:m}) \geq 0$. 
+
+\item The sample space is $\mathcal{S} = \mathbb{R}^{m}$. We can divide the sample space into two parts: $ \mathcal{S} = \mathcal{S}_{1} \cup \mathcal{S}_{2}$, where 
+\begin{itemize} 
+\item[] $ \mathcal{S}_{1} = \{ s_{1:m} \in \mathbb{R}^{m}: L_{5} = 100 \}$
+\item[] $ \mathcal{S}_{2} = \{ s_{1:m} \in \mathbb{R}^{m}: L_{5} < 100 \}$
+\end{itemize}
+Particles in $\mathcal{S}_{1}$ lead to a payoff of 0 and particles in $\mathcal{S}_{2}$ lead to a positive payoff.  
+
+\item This is similar to the barrier option case, wherein particles in one part of the sample space lead to a 0 payoff and particles in the other part lead to a positive payoff. The idea is to explore $\mathcal{S}_{2}$ more. 
+
+\item For this, define 
+$$h_{n}(s_{1:n}) := \left [ 100 + \sum_{i=1}^{n} f(s_{i}) \right ] \mathds{1} \{ L_{n} < 100 \}$$ 
+for $n = 1, 2, \ldots, 5$.
+
+Then we can write 
+$$ g_{m}(s_{1:m}) = h_{5}(s_{1:5}) \times \frac{ g_{m}(s_{1:m}) } { h_{5} (s_{1:5}) } $$  
+
+\item We say that a particle is `dead' if it is still inside the pit by time 5, i.e, when $L_{5} = 100$.
+
+\item If a particle is dead, then it leads to a 0 payoff and is rejected and resampled among particles that are still alive. This is similar to the barrier option case.
+
+\end{itemize}
+
+\end{document}
+
+
+
+
+
+
+
+

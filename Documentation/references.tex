@@ -1,0 +1,57 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{undertilde}
+\usepackage{amssymb}
+\usepackage{verbatim}
+\usepackage{dsfont}
+\usepackage{float}
+
+\begin{document}
+
+\title{References to Read}
+\maketitle
+
+\textbf{\underline{For Tempering:}}
+
+\begin{itemize}
+
+\item \textsc{Adaptive Parallel Tempering Algorithm} by Blazej Miasojedow, Eric Moulines and Matti Vihola.
+\begin{itemize}
+\item Applying an adaptive tempering for MCMC.
+\item Running $L$ chains pararelly, each targeting a tempered version of the target $\pi^{\beta^{(l)}}(x)$.
+\item Propagating each chain by a random walk MH step.
+\item Also swapping adjacent states (in a random manner, read the paper for details).
+\item The adaptiveness is in choosing the temperatures $\{\beta^{(l)} \}_{1 \leq l \leq L}$.
+\\ This is done in a non-trivial manner.
+\item Has a whole lot of theoretical results with proofs.
+\end{itemize}  
+\item \textsc{An Adaptive SMC Method for Approximate Bayesian Computation} by Pierre Del Moral, Arnaud Doucet and Ajay Jasra. 
+\begin{itemize}
+\item All this does is that it runs SMC samplers for ABC. 
+\item The `adaptive' part is that it tries to keep the ESS of the SMC sampler from becoming too low and adapts the sequence of temperatures (in this case, tolerance levels) to do this. 
+\item Should be implementable for TARN as well.
+\item Works on path space, so computationally expensive.
+\end{itemize}
+\item \textsc{Density-Tempered Marginalized SMC Sampler} by Jin-Chuan Duan and Andras Fulop.
+\begin{itemize}
+\item (this does not seem to be doing much, just applying the idea of the above paper in the psuedo-marginal case, but should read again carefully)
+\end{itemize}
+\item \textsc{Parallel Tempering: Theory, Applications and New Perspectives} by David J. Earl and Michael W. Deem.
+
+\end{itemize}
+
+\vspace{0.2in}
+
+\textbf{\underline{For normalizing constant:}}
+
+\begin{itemize}
+
+\item Papers that Ajay and Alex sent on 19th March 2015
+
+\end{itemize} 
+
+
+\end{document}

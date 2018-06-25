@@ -1,0 +1,220 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{undertilde}
+\usepackage{amssymb}
+\usepackage{verbatim}
+\usepackage{dsfont}
+\usepackage{float}
+
+\begin{document}
+
+\title{TARN}
+\author{\textsc{Deborshee Sen, DSAP, NUS}}
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{SMC For TARN Option}
+We can use the ideas above and the ideas of SMC Samplers as in \cite{SMC_option_jasra} and to estimate the prices of Target Accrual Redemption Note options.
+
+\subsection{Description of the Options}
+
+Here we describe a (very simplified) TARN option. Consider a function $f : \mathbb{R}^{+} \rightarrow \mathbb{R}$, where $\mathbb{R}^{+} = (0, \infty)$. We have a set of monitoring dates $t_{1}, \ldots, t_{m}$. Let $f = f^{+} - f^{-}$ denote the usual positive and negative parts of $f$. Consider the gain and loss processes:
+
+\begin{equation} \label{eq:gain_and_loss}
+G_{j} = \sum_{i=1}^{j} f^{+}(S_{t_{i}}), \text{ } L_{j} = \sum_{i=1}^{j} f^{-}(S_{t_{i}}) 
+\end{equation} 
+The following stopping times are defined: 
+
+\begin{equation} \label{eq:stopping_times}
+\tau^{(G)} = \text{min} \{j : G_{j} \geq \Gamma_{G} \}, \text{ } \tau^{(L)} = \text{min} \{j : L_{j} \geq \Gamma_{L} \} \text{ and } \tau = \text{min} \{ \tau^{(G)}, \tau^{(L)}, m \} 
+\end{equation}
+The payoff of this option is $\sum_{i=1}^{\tau} f(S_{t_{i}})$ and we want to estimate its price 
+
+\begin{equation} \label{eq:price_TARN} 
+\text{P} = \mathbb{E} \left [ \sum_{i=1}^{\tau} f(S_{t_{i}}) \right ] 
+\end{equation}
+
+\subsection{SMC Samplers} 
+SMC samplers were (first ?) presented in \cite{SMC_samplers} and were used in \cite{SMC_option_jasra} to estimate the price of Asian Options. Suppose that we want to sample from a sequence of target distributions $\{ \pi_{n} \}_{0 \leq n \leq p}$ on a common space. The algorithm samples from a sequence of distributions of increasing dimensions. Introduce a seuence of auxiluary measures $\{ \tilde{\pi}_{n} \}_{0 \leq n \leq p}$ on spaces of increasng measures, such that they admit the $\{ \pi_{n} \}_{0 \leq n \leq p}$ as marginals. The folowing sequence of auxiliary measures is used 
+
+\begin{equation} \label{eq:smc_sampler_1}
+\tilde{\pi}(x_{0:n}) = \pi_{n}(x_{n}) \prod_{j=0}^{n-1} L_{j}(x_{j+1},x_{j}) 
+\end{equation}
+where $\{ L_{n} \}_{0 \leq n \leq p-1}$ are a sequence of Maarkov Kernels that act backward in time and are termed backward Markov kernels.The algorithm samples forward using using kernels $\{ K_{n} \}$. The chice of backward kernels is made as the incremental weights are 
+
+\begin{equation} \label{eq:smc_sampler_incremental_weights}
+W_{n}(x_{n-1:n}) = \frac{ \pi_{n}(x_{n}) L_{n-1}(x_{n},x_{n-1}) }{ \pi_{n-1}(x_{n-1}) K_{n}(x_{n-1},x_{n}) }, \text{ } n \geq 1
+\end{equation}
+which allows for fast computation and avoids a path degeneracy effect. The kernels $K_{n}(x_{n-1},\cdot)$ are chosen to be $\pi_{n}(\cdot)$ invariant (by using a Metropolis-Hastings proposal step) and the backward kernel used is
+
+\begin{equation} \label{eq:backward_kernel}
+L_{n-1}(x_{n},x_{n-1}) = \frac{ \pi_{n}(x_{n-1}) K_{n}(x_{n-1},x_{n})}{ \pi_{n}(x_{n}) } 
+\end{equation}
+and in this case the incremental weights \eqref{eq:smc_sampler_incremental_weights} at time $n$ simplify to 
+
+\begin{equation} \label{simplified_incremental_weights}
+W_{n}(x_{n-1}) = \frac{ \pi_{n}(x_{n-1}) } { \pi_{n-1}(x_{n-1}) } 
+\end{equation}
+We refer to \cite{SMC_option_jasra} and \cite{SMC_samplers} for more details.
+
+\subsection{Estimating Price of TARN Options}
+We again assume that the underlying asset evolves as \eqref{eq:pde}. We work on a log-scale and consider the Euler-Maruyama discretization \eqref{eq:log_scale}. If $\tau$ were deterministic in \eqref{eq:price_TARN}, the authors in \cite{SMC_option_jasra} have shown how one can use SMC samplers to estimate $\mathbb{E} \left | \sum_{i=1}^{j} f(S_{t_{i}}) \right | $, where we still use $f(\cdot)$ to avoid changing notations. They do it as follows:
+(everything is conditioned on $R_{0}$)
+\begin{itemize}
+\item[\textit{SIR}:] first sample $M$ particles from the sequence of densitities which are proportional to 
+\begin{itemize}
+\item[] $p(r_{1}), p(r_{1:2}), \ldots, p(r_{1:t_{1}-1}), | f(r_{t_{1}}) | ^{\kappa_{1}} p(r_{1:t_{1}})$
+\item[] $p(r_{1:t_{1}+1}), p(r_{1:t_{1}+2}), \ldots, p(r_{1:t_{2}-1}), \left | \sum_{i=1}^{2} f(r_{t_{i}}) \right |^{\kappa_{2}} p(r_{1:t_{2}})$
+\item[] $\vdots$
+\item[] $p(r_{1:t_{m-1}+1}), p(r_{1:t_{m-1}+2}), \ldots, p(r_{1:t_{m}-1}), \left | \sum_{i=1}^{n} f(r_{t_{i}}) \right |^{\kappa_{n}} p(r_{1:t_{m}})$
+\end{itemize}
+
+where $ 0 \leq \kappa_{1} < \ldots < \kappa_{n} < 1 $ and the process densities are used as proposals.
+
+\item[\textit{SMC samplers}:] Given the samples $\{ R_{1:N}^{(l)} \}_{l=1}^{M}$ from SIR, use SMC samplers (as in section 3.2) to sample from the sequence of densities 
+
+\begin{equation} \label{eq:SMC_sampler_target}
+\tilde{\pi}_{j} (r_{1:N}) \propto \left | \sum_{i=1}^{m} f(r_{t_{i}}) \right |^{\tilde{\kappa}_{j}} p(r_{1:N}) 
+\end{equation}
+for $j = 1, 2, \ldots, p$, where $\kappa_{n} = \tilde{\kappa}_{1} < \tilde{\kappa}_{2} < \ldots < \tilde{\kappa}_{m} = 1$. In the notation of section 3.2, $x = r_{1:N}$. We use a random walk Metropolis-Hastings proposal as the kernel $K_{n}(x_{n-1},x_{n})$.
+\end{itemize}
+
+We use their idea and the idea of what we called non-blind SMC to estimate \eqref{eq:price_TARN} as follows:
+
+\begin{eqnarray} 
+\text{P} & = & \mathbb{E} \left [ \sum_{i=1}^{\tau} f(S_{t_{i}}) \right ]  \nonumber \\
+& = &  \mathbb{E} \left [ \sum_{i=1}^{\tau} \left ( f^{+}(R_{t_{i}}) - f^{-} (R_{T_{i}}) \right ) \right ] \nonumber \\
+& = & \mathbb{E} \left [ \mathbb{E} \left (\sum_{i=1}^{\tau} \left ( f^{+}(R_{t_{i}}) - f^{-} (R_{T_{i}}) \right ) \middle| \tau \right ) \right ]  \nonumber \\
+& = & \sum_{j=1}^{m} \left [ \mathbb{E} \left ( \sum_{i=1}^{j} f^{+}(R_{t_{n}}) \middle| \tau = j \right ) \mathbb{P} (\tau = j) - \mathbb{E} \left ( \sum_{i=1}^{j} f^{-}(R_{t_{n}}) \middle| \tau = j \right ) \mathbb{P} (\tau = j) \right ] \label{eq:price_TARN_idea}
+\end{eqnarray}
+The terms $\mathbb{P} (\tau = j)$ can be estimated as follows:
+
+\begin{itemize}
+\item[] For $ 1 \leq j \leq m-1$,
+\begin{eqnarray} 
+\mathbb{P} ( \tau = j ) & = & \hspace{0.15in} \mathbb{P} ( G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, G_{j} \geq \Gamma_{G} ) \nonumber \\
+& & + \text{ } \mathbb{P} ( G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, L_{j} \geq \Gamma_{L} ) \nonumber \\
+& & - \text{ } \mathbb{P} ( G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, G_{j} > \Gamma_{L}, L_{j} > \Gamma_{L} ) \label{eq:stopping_time_probability_j}
+\end{eqnarray}
+
+\item[] For $j = m$,
+\begin{eqnarray}
+\mathbb{P}(\tau = m) & = & \hspace{0.2in} \mathbb{P} ( G_{1:m} < \Gamma_{G}, L_{1:m} < \Gamma_{M} ) \nonumber \\
+& & \text{ } + \mathbb{P} ( G_{1:m-1} < \Gamma_{G}, L_{1:m-1} < \Gamma_{L}, G_{j} \geq \Gamma_{G} ) \nonumber \\
+& & \text{ } + \mathbb{P} ( G_{1:m-1} < \Gamma_{G}, L_{1:m-1} < \Gamma_{L}, L_{m} \geq \Gamma_{L} ) \nonumber \\
+& & - \text{ } \mathbb{P} ( G_{1:m-1} < \Gamma_{G}, L_{1:m-1} < \Gamma_{L}, G_{m} > \Gamma_{L}, L_{m} > \Gamma_{L} ) \label{eq:stopping_time_probability_m}
+\end{eqnarray}
+\end{itemize}
+These simply follows from the fact that $ \mathbb{P} (A \cup B) = \mathbb{P} (A) + \mathbb{P}(B) - \mathbb{P} (A \cap B)$ for events $A$ and $B$. The terms in \eqref{eq:stopping_time_probability_j} and \eqref{eq:stopping_time_probability_m} can be written as:
+\begin{eqnarray} 
+\mathbb{P} ( G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, G_{j} \geq \Gamma_{G} ) & = & \mathbb{E} \left [ \mathds{1} \{ G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, G_{j} \geq \Gamma_{G} \} \right ] \nonumber \\
+& = & \mathbb{E} \left [ \left ( \prod_{i=1}^{j-1} \mathds{1} \{ G_{i} < \Gamma_{G}, L_{i} < \Gamma_{L} \} \right ) \mathds{1} \{ G_{j} \geq \Gamma_{G} \} \right ], \nonumber 
+\end{eqnarray}
+and similarly,
+\begin{eqnarray} 
+\mathbb{P} ( G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, L_{j} \geq \Gamma_{L} ) & = &  \mathbb{E} \left [ \left ( \prod_{i=1}^{j-1} \mathds{1} \{ G_{i} < \Gamma_{G}, L_{i} < \Gamma_{L} \} \right ) \mathds{1} \{ L_{j} \geq \Gamma_{L} \} \right ], \nonumber \\
+\mathbb{P} ( G_{1:j-1} < \Gamma_{G}, L_{1:j-1} < \Gamma_{L}, G_{j} \geq \Gamma_{G}, L_{j} \geq \Gamma_{L} ) & = &  \mathbb{E} \left [ \left ( \prod_{i=1}^{j-1} \mathds{1} \{ G_{i} < \Gamma_{G}, L_{i} < \Gamma_{L} \} \right ) \mathds{1} \{  G_{j} \geq \Gamma_{G}, L_{j} \geq \Gamma_{L} \} \right ], \nonumber \\
+\text{ and } \mathbb{P} ( G_{1:m} < \Gamma_{G}, L_{1:m} < \Gamma_{L} ) & = & \mathbb{E} \left [ \prod_{i=1}^{m} \mathds{1} \{ G_{i} < \Gamma_{G}, L_{i} < \Gamma_{L} \} \right ] \nonumber 
+\end{eqnarray}
+for $j = 1, 2, \ldots, m$. We can therefore sraightforwardly use the ideas of `blind' SMC to estimate the terms above. Can we also use `non blind' SMC?
+
+\subsubsection{Simple Weighing Functions}
+We try some simple weighing functions $h_{n}$'s. We let $L = 99$ and $U = 101$. The number of repetitions was set to be 100. In this case, we choose two types of $h_{n}$'s:
+\begin{itemize}
+\item $h_{n}(x) = h_{gaussian}(x) = e^{-c[x - \text{log}(M)]^{2}}$ $\forall n \notin \{ t_{1}, t_{2}, \ldots, t_{m} \}$.
+\item $h_{n}(x) = h_{quadratic}(x) = c[x - \text{log}(M)]^{2} + 1 $ $\forall n \notin \{ t_{1}, t_{2}, \ldots, t_{m} \}$.
+\end{itemize}
+where $M = \sqrt{L \times U}$ (the geometric mean of $L$ and $U$. We choose four different values of $c$, namely $1, 0.1, 0.01$ and $0.001$. Here are some results:
+\begin{itemize}
+\item[--] $m = 2, k = 90$: 
+\begin{center}
+\begin{tabular}{| l | c | c | }
+\hline
+Method & Mean & Relative standard deviation \\ \hline
+Blind SMC & $ 6.20 \times 10^{-3} $ & $ 4.85 \times 10^{-2} $ \\ 
+Gaussian with $c = 1$ & $6.16 \times 10^{-3}$ & $ 4.58 \times 10^{-2} $ \\ 
+Gaussian with $c = 0.1$ &  $6.15 \times 10^{-3}$ & $ 4.59  \times 10^{-2} $ \\ 
+Gaussian with $c = 0.01$ & $6.10 \times 10^{-3}$   & $ 4.67  \times 10^{-2} $ \\
+Gaussian with $c = 0.001$ &  $6.19 \times 10^{-3} $ & $ 4.44 \times 10^{-2} $ \\ 
+Qudratic with $c = 1$ &  $6.18 \times 10^{-3}$  & $ 4.75 \times 10^{-2} $ \\ 
+Qudratic with $c = 0.1$ & $ 6.15 \times 10^{-3}$  & $ 4.64 \times 10^{-2} $ \\
+Qudratic with $c = 0.01$ & $6.17 \times 10^{-3}$   & $ 4.06  \times 10^{-2} $ \\ 
+Qudratic with $c = 0.001$ &  $6.11 \times 10^{-3}$  & $ 4.58  \times 10^{-2} $ \\ \hline
+\end{tabular} \end{center}
+
+\item[--] $m = 5, k = 90$:
+\begin{center}
+\begin{tabular}{| l | c | c | }
+\hline
+Method & Mean & Relative standard deviation \\ \hline
+Blind SMC & $ 2.42 \times 10^{-5} $ & $ 6.40 \times 10^{-2} $ \\ 
+Gaussian with $c = 1$ & $ 2.40 \times 10^{-5}$ & $ 6.63 \times 10^{-2} $ \\ 
+Gaussian with $c = 0.1$ &  $2.39 \times 10^{-5}$ & $ 5.38  \times 10^{-2} $ \\ 
+Gaussian with $c = 0.01$ & $2.40 \times 10^{-5}$   & $ 5.55  \times 10^{-2} $ \\
+Gaussian with $c = 0.001$ &  $2.41 \times 10^{-5} $ & $ 6.19 \times 10^{-2} $ \\ 
+Qudratic with $c = 1$ &  $2.39 \times 10^{-5}$  & $ 6.32 \times 10^{-2} $ \\ 
+Qudratic with $c = 0.1$ & $ 2.41 \times 10^{-5}$  & $ 6.23 \times 10^{-2} $ \\
+Qudratic with $c = 0.01$ & $2.38 \times 10^{-5}$   & $ 5.67  \times 10^{-2} $ \\ 
+Qudratic with $c = 0.001$ &  $2.43 \times 10^{-5}$  & $ 5.35  \times 10^{-2} $ \\ \hline
+\end{tabular} \end{center}
+
+
+\end{itemize}
+
+\begin{thebibliography}{76}
+
+\bibitem{valuation}
+  Del Moral, P. and Shevchenko, P.V.,
+  \emph{Valuation of Barrier Options Using Sequential Monte Carlo},
+  arXiv, (2014)
+
+\bibitem{SMC_option_jasra}
+  Jasra, A. and Del Moral, P.,
+  \emph{Sequential Monte Carlo for Option Pricing},
+  Stoch. Anal. Appl., (2011)
+
+\bibitem{SMC_highly_informative}
+  Del Moral, P. and Murray, M.M.,
+  \emph{Sequential Monte Carlo With Highly Informative Observations},
+  arXiv, (2014)
+
+\bibitem{one_step_survival}
+  Glasserman, P. and Staum, J.,
+  \emph{Conditioning on One-Step Survival for Barrier Option Simulations},
+  Operations Research, Vol. 49, No. 6, 923-937 (2001)
+
+\bibitem{SMC_samplers}
+ Del Moral, P., Doucet, A. and Jasra, A.,
+  \emph{Sequential Monte Carlo Samplers},
+  J. R. Statist. Soc. B (2006)
+
+\bibitem{tutorial_15_years_later}
+Doucet, A. and Johansen, A.M.,
+  \emph{A Tutorial on Particle Filtering and Smothing: Fifteen Years Later},
+  Oxford Handbook of Nonlinear Filtering (2011)
+
+\bibitem{TARN_finite_difference}
+Luo, X. and Shevchenko, P.V.
+  \emph{Pricing TARN Using a Finite Difference Method},
+  arXiv, (2014)
+
+
+\end{thebibliography}
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
